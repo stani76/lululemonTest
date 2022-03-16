@@ -25,7 +25,6 @@ abstract class AppDatabase : RoomDatabase() {
             synchronized(this) {
                 val instance = Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "lululemon.db3")
                     .fallbackToDestructiveMigration()
-                    //.allowMainThreadQueries()
                     .build()
 
                 INSTANCE = instance
