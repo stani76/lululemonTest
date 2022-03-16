@@ -18,8 +18,8 @@ The technologies used to accomplish the task are as follows:
 
 Contributors names and contact info
 
-[Steve Morris (Github)](https://github.com/stani76)
-[LinkedIn](https://www.linkedin.com/in/624/)
+* [Steve Morris (Github)](https://github.com/stani76)
+* [LinkedIn](https://www.linkedin.com/in/624/)
 
 ## Version History
 
