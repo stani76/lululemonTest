@@ -1,5 +1,4 @@
 package com.example.lululemonassessment
-import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
@@ -8,18 +7,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.lululemonassessment.database.GarmentRepository
+import com.example.lululemonassessment.database.IGarmentRepository
+import com.example.lululemonassessment.models.Garment
 import com.example.lululemonassessment.viewmodels.MainViewModel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 
 @Composable
 fun AddScreen(viewModel: MainViewModel) {
     val focusRequester = remember { FocusRequester() }
     TextField(
-        value = viewModel.newGarmentName.value,
+        value = viewModel.newGarmentName,
         modifier = Modifier
             .fillMaxWidth()
             .focusRequester(focusRequester),
-        onValueChange = { viewModel.newGarmentName.value = it },
+        onValueChange = { viewModel.newGarmentName = it },
         label = { Text("Garment Name:") }
     )
     LaunchedEffect(Unit) {
@@ -27,9 +29,13 @@ fun AddScreen(viewModel: MainViewModel) {
     }
 }
 
-@SuppressLint("UnrememberedMutableState")
 @Preview(showBackground = true)
 @Composable
 fun AddScreenPreview() {
-    AddScreen(MainViewModel(GarmentRepository(LuluApplication())))
+    AddScreen(
+        MainViewModel(object : IGarmentRepository {
+            override fun allGarments(): Flow<List<Garment>> = flow { emit(listOf()) }
+            override fun insertGarment(garment: Garment) {}
+        })
+    )
 }

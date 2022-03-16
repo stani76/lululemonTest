@@ -1,52 +1,60 @@
 package com.example.lululemonassessment.viewmodels
 
-import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MediatorLiveData
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import com.example.lululemonassessment.database.GarmentRepository
+import androidx.lifecycle.viewModelScope
+import com.example.lululemonassessment.database.IGarmentRepository
 import com.example.lululemonassessment.models.Garment
+import com.example.lululemonassessment.models.Screens
+import com.example.lululemonassessment.models.SortOrder
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import javax.inject.Inject
 
 @HiltViewModel
-class MainViewModel @Inject constructor(private val garmentRepo: GarmentRepository) : ViewModel() {
-    private val dbGarmentListByTitle: LiveData<List<Garment>> = garmentRepo.allGarmentsByTitle()
-    private val dbGarmentListByCreationDate: LiveData<List<Garment>> = garmentRepo.allGarmentsByCreationDate()
+class MainViewModel @Inject constructor(private val garmentRepo: IGarmentRepository) : ViewModel() {
+    private val _garmentList = MutableStateFlow<List<Garment>>(listOf())
+    val garmentList = _garmentList.asSharedFlow()
 
-    val garmentList = MediatorLiveData<List<Garment>>()
-    var currentSort = mutableStateOf(SortOrder.Alpha)
-    val currentScreen = mutableStateOf(Screens.List)
-    val newGarmentName = mutableStateOf("")
+    var currentSort by mutableStateOf(SortOrder.Alpha)
+    var currentScreen by mutableStateOf(Screens.List)
+    var newGarmentName by mutableStateOf("")
 
     init {
-        garmentList.addSource(dbGarmentListByTitle) { result ->
-            if (currentSort.value == SortOrder.Alpha)
-                result?.let { garmentList.value == it }
-        }
-        garmentList.addSource(dbGarmentListByCreationDate) { result ->
-            if (currentSort.value == SortOrder.Creation)
-                result?.let { garmentList.value == it }
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                garmentRepo.allGarments().collect {
+                    withContext(Dispatchers.Main) {
+                        _garmentList.tryEmit(if (it.isNotEmpty()) sortList(it) else it)
+                    }
+                }
+            }
         }
     }
 
-    enum class SortOrder { Alpha, Creation }
-    enum class Screens { List, Add }
-
-    fun changeSort(newOrder: SortOrder) {
-        when (newOrder) {
-            SortOrder.Alpha -> dbGarmentListByTitle.value?.let { garmentList.value = it }
-            SortOrder.Creation -> dbGarmentListByCreationDate.value?.let { garmentList.value = it }
-        }.also {
-            currentSort.value = newOrder
+    private fun sortList(list: List<Garment>): List<Garment> {
+        return when (currentSort) {
+            SortOrder.Alpha -> list.sortedBy { it.title.uppercase() }
+            SortOrder.Creation -> list.sortedBy { it.creationDate }
         }
+    }
+
+    fun sortGarments(newOrder: SortOrder = currentSort) {
+        currentSort = newOrder
+        _garmentList.tryEmit(sortList(_garmentList.value))
     }
     fun addNewGarment() {
-        if (newGarmentName.value.isNotBlank()) {
-            garmentRepo.insertGarment((Garment(0, newGarmentName.value, LocalDateTime.now())))
-            newGarmentName.value = ""
+        if (newGarmentName.isNotBlank()) {
+            garmentRepo.insertGarment((Garment(0, newGarmentName, LocalDateTime.now())))
+            newGarmentName = ""
         }
     }
 }
